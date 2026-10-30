@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* System stacks only: no font download, so the demo works offline. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+body {
+  background: #07090e;
+  color: #e6e9f0;
+  font-family: var(--font-sans);
+}
+
+input[type="range"] {
+  accent-color: #00f0ff;
+}
+
+/* Custom range track: cyan fill up to the thumb (--fill set inline). */
+input.track {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #00f0ff var(--fill, 0%), rgba(255, 255, 255, 0.1) var(--fill, 0%));
+  cursor: pointer;
+}
+input.track:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+input.track:focus-visible {
+  outline: 2px solid #00f0ff;
+  outline-offset: 4px;
+}
+input.track::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #07090e;
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+input.track::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #07090e;
+  border: 2px solid #00f0ff;
+}
