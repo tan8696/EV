@@ -65,15 +65,13 @@ function TruthGauge({ claimed, real, label }: { claimed: number; real: number; l
   );
 }
 
-function Sparkline({ values, color }: { values: number[]; color: string }) {
-  const lo = Math.min(...values), hi = Math.max(...values);
-  const pts = values.map((v, i) => `${((i / Math.max(values.length - 1, 1)) * 100).toFixed(1)},${(28 - ((v - lo) / Math.max(hi - lo, 1)) * 26).toFixed(1)}`);
-  return (
-    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="h-7 w-full" aria-hidden>
-      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
+const TABS = [
+  { id: "route", label: "Route" },
+  { id: "battery", label: "Battery" },
+  { id: "loss", label: "Where range went" },
+  { id: "chargers", label: "Chargers" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
 
 function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -91,6 +89,7 @@ export default function CockpitPage() {
   const plan = useMemo(() => planTrip(sim, osrmHours ?? undefined), [sim, osrmHours]);
   const [stopOnFor, setStopOnFor] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
+  const [tab, setTab] = useState<TabId>("route");
   const [here, setHere] = useState<ReturnType<typeof nearestOnCorridors> | null>(null);
   const [locMsg, setLocMsg] = useState("");
   const reduce = useReducedMotion();
@@ -104,6 +103,9 @@ export default function CockpitPage() {
   const exhaustIdx = riskLine.findIndex((s) => s <= bufferPct);
   const exhaustKm = exhaustIdx < 0 ? null : sim.kmMarks[exhaustIdx];
   const arrival = riskLine[riskLine.length - 1];
+  const emptyIdx = riskLine.findIndex((s) => s <= 0);
+  const emptyKm = emptyIdx < 0 ? null : sim.kmMarks[emptyIdx];
+  const arrivalPct = Math.max(0, Math.round(arrival));
   const milestones: Milestone[] = plan.stops.map((s) => ({ km: s.km, label: `${s.assessment.charger.name.split(" ")[0]} ${Math.round(s.km)}km`, tone: stopOn ? "safe" : "risk" }));
   const first = plan.stops[0];
   const firstShort = first?.assessment.charger.name.split(" ")[0];
@@ -215,10 +217,11 @@ export default function CockpitPage() {
         <button
           type="button"
           onClick={() => setDrawer(true)}
-          className="ml-auto flex items-center gap-2 rounded-full border border-[#00F0FF]/40 bg-[#00F0FF]/10 px-3 py-1.5 text-sm text-[#00F0FF] hover:bg-[#00F0FF]/20 focus-visible:outline-2 focus-visible:outline-[#00F0FF]"
+          className="flex items-center gap-2 rounded-full border border-[#00F0FF]/40 bg-[#00F0FF]/10 px-3 py-1.5 text-sm text-[#00F0FF] hover:bg-[#00F0FF]/20 focus-visible:outline-2 focus-visible:outline-[#00F0FF]"
         >
           <Wrench className="h-4 w-4" aria-hidden />
-          Battery health <span className="font-mono tabular-nums">{healthPct.toFixed(1)}%</span> · Calibrate
+          Battery <span className="font-mono tabular-nums">{healthPct.toFixed(1)}%</span>
+          <span className="text-[11px] opacity-70">{calibrated[vehicleId] ? "calibrated" : "spec"} · Calibrate</span>
         </button>
         </div>
         <p aria-live="polite" className="mt-2 text-xs text-white/60 empty:hidden">{locMsg}</p>
@@ -244,17 +247,17 @@ export default function CockpitPage() {
               </p>
               <p className="mt-1 text-sm text-white/60">
                 {stopOn
-                  ? `With this stop you reach ${wps[wps.length - 1].name} with at least ${Math.round(arrival)} % battery in ${risk.odds}.`
+                  ? `With this stop you reach ${wps[wps.length - 1].name} with at least ${arrivalPct} % battery in ${risk.odds}.`
                   : nonStopOk
-                    ? `In ${risk.odds} you arrive with at least ${Math.round(arrival)} % battery. No charging needed.`
+                    ? `In ${risk.odds} you arrive with at least ${arrivalPct} % battery. No charging needed.`
                     : `Battery may drop below your ${bufferPct} % safety limit near km ${Math.round(exhaustKm ?? sim.distanceKm)}. Try a quick fix below.`}
               </p>
             </div>
             <div className="text-right">
               <p className="font-mono text-3xl tabular-nums" style={{ color: socColor(arrival, bufferPct) }}>
-                <CountUp to={Math.round(arrival)} />%
+                <CountUp to={arrivalPct} />%
               </p>
-              <p className="text-[11px] text-white/45">battery when you arrive</p>
+              <p className="text-[11px] text-white/45">{emptyKm === null ? "battery when you arrive" : `runs out near km ${Math.round(emptyKm)}`}</p>
             </div>
           </div>
           {(first || ecoKm >= 1) && (
@@ -275,13 +278,7 @@ export default function CockpitPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 rounded-xl border border-white/10 sm:grid-cols-5">
-            <Stat label="Arrival battery">
-              <span className="font-mono text-lg tabular-nums text-white">{Math.round(arrival)}%</span>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.max(0, Math.min(arrival, 100))}%`, background: socColor(arrival, bufferPct) }} />
-              </div>
-            </Stat>
+          <div className="grid grid-cols-2 rounded-xl border border-white/10">
             <Stat label="Trip time">
               <span className="font-mono text-lg tabular-nums text-white">{hm(stopOn ? plan.totalHours : plan.driveHours)}</span>
               <span className="text-[11px] text-white/40">{osrmHours ? "OSRM drive time" : "offline estimate"}</span>
@@ -289,13 +286,6 @@ export default function CockpitPage() {
             <Stat label="Energy use">
               <span className="font-mono text-lg tabular-nums text-white">{Math.round(sim.deterministic.whPerKm)}</span>
               <span className="text-[11px] text-white/40">Wh per km</span>
-            </Stat>
-            <Stat label="Battery health">
-              <span className="font-mono text-lg tabular-nums text-white">{healthPct.toFixed(1)}%</span>
-              <span className="text-[11px] text-white/40">{calibrated[vehicleId] ? "calibrated" : "spec sheet"}</span>
-            </Stat>
-            <Stat label="Battery over the trip">
-              <Sparkline values={sim.socBands.map((b) => b.p50)} color="#00F0FF" />
             </Stat>
           </div>
         </SpotlightCard>
@@ -310,32 +300,62 @@ export default function CockpitPage() {
           <ControlDock />
         </SpotlightCard>
 
-        {/* Map */}
+        {/* Proof, one view at a time */}
         <SpotlightCard className="p-4 lg:col-span-12">
-          <h2 className="mb-2 text-xs uppercase tracking-wider text-white/45">Route &amp; chargers</h2>
-          <p className="mb-2 text-xs text-white/50">The red stretch is where your battery could run low.</p>
-          <CorridorMap sim={sim} stopIds={stopOn ? plan.stops.map((s) => s.assessment.charger.id) : []} exhaustKm={exhaustKm} hereKm={here?.corridorId === corridorId ? here.km : null} />
-        </SpotlightCard>
-
-        {/* Cone */}
-        <SpotlightCard className="p-4 lg:col-span-8">
-          <h2 className="mb-2 text-xs uppercase tracking-wider text-white/45">Battery along the route</h2>
-          <p className="mb-2 text-xs text-white/50">Middle line is the usual case. The shaded band shows how low it can go on a bad day.</p>
-          <ConeOfUncertainty sim={sim} sawtooth={sawtooth} milestones={milestones} />
-        </SpotlightCard>
-
-        {/* Waterfall */}
-        <SpotlightCard className="p-4 lg:col-span-4">
-          <h2 className="mb-2 text-xs uppercase tracking-wider text-white/45">Where did my range go?</h2>
-          <p className="mb-2 text-xs text-white/50">How many km each cause (AC, heat, load, road) takes away.</p>
-          <ParasiteWaterfall sim={sim} />
-        </SpotlightCard>
-
-        {/* Chargers */}
-        <SpotlightCard className="max-h-[720px] overflow-y-auto p-4 lg:col-span-12">
-          <h2 className="mb-1 text-xs uppercase tracking-wider text-white/45">Can I trust these chargers?</h2>
-          <p className="mb-3 text-xs text-white/50">Higher % means it is more likely to be working when you get there.</p>
-          <ChargerAutopsy verdict={tripVerdict} />
+          <div
+            role="tablist"
+            aria-label="Trip details"
+            className="mb-4 flex gap-1 overflow-x-auto rounded-full border border-white/10 p-0.5"
+            onKeyDown={(e) => {
+              if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+              const i = TABS.findIndex((t) => t.id === tab);
+              const next = TABS[(i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length].id;
+              setTab(next);
+              document.getElementById(`tab-${next}`)?.focus();
+            }}
+          >
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                id={`tab-${t.id}`}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                aria-controls={`panel-${t.id}`}
+                tabIndex={tab === t.id ? 0 : -1}
+                onClick={() => setTab(t.id)}
+                className={`shrink-0 rounded-full px-4 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-[#00F0FF] ${tab === t.id ? "bg-[#00F0FF]/15 text-[#00F0FF]" : "text-white/60 hover:text-white"}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="outline-none">
+            {tab === "route" && (
+              <>
+                <p className="mb-2 text-xs text-white/50">The red stretch is where your battery could run low.</p>
+                <CorridorMap sim={sim} stopIds={stopOn ? plan.stops.map((s) => s.assessment.charger.id) : []} exhaustKm={exhaustKm} hereKm={here?.corridorId === corridorId ? here.km : null} />
+              </>
+            )}
+            {tab === "battery" && (
+              <>
+                <p className="mb-2 text-xs text-white/50">Middle line is the usual case. The shaded band shows how low it can go on a bad day.</p>
+                <ConeOfUncertainty sim={sim} sawtooth={sawtooth} milestones={milestones} />
+              </>
+            )}
+            {tab === "loss" && (
+              <div className="mx-auto max-w-2xl">
+                <p className="mb-2 text-xs text-white/50">How many km each cause (AC, heat, load, road) takes away.</p>
+                <ParasiteWaterfall sim={sim} />
+              </div>
+            )}
+            {tab === "chargers" && (
+              <>
+                <p className="mb-3 text-xs text-white/50">Higher % means it is more likely to be working when you get there.</p>
+                <ChargerAutopsy verdict={tripVerdict} />
+              </>
+            )}
+          </div>
         </SpotlightCard>
       </div>
 

@@ -5,17 +5,17 @@ import { useTrip } from "@/components/TripContext";
 const LOADS = [
   { label: "Solo", sub: "75 kg", patch: { payloadKg: 75 } },
   { label: "Couple", sub: "150 kg", patch: { payloadKg: 150 } },
-  { label: "Family + Luggage", sub: "320 kg", patch: { payloadKg: 320 } },
+  { label: "Family", sub: "320 kg + bags", patch: { payloadKg: 320 } },
 ];
 const WEATHER = [
   { label: "Mild", sub: "26 °C", patch: { ambientC: 26, acPct: 30 } },
-  { label: "Summer AC", sub: "38 °C", patch: { ambientC: 38, acPct: 60 } },
-  { label: "Heatwave Max AC", sub: "45 °C", patch: { ambientC: 45, acPct: 100 } },
+  { label: "Summer", sub: "38 °C · AC", patch: { ambientC: 38, acPct: 60 } },
+  { label: "Heatwave", sub: "45 °C · max AC", patch: { ambientC: 45, acPct: 100 } },
 ];
 const ROADS = [
   { label: "Expressway", sub: "smooth", patch: { iriOffset: 0 } },
-  { label: "Patchy Highway", sub: "some bumps", patch: { iriOffset: 1 } },
-  { label: "Broken / Potholes", sub: "many potholes", patch: { iriOffset: 2.5 } },
+  { label: "Patchy", sub: "some bumps", patch: { iriOffset: 1 } },
+  { label: "Potholes", sub: "broken road", patch: { iriOffset: 2.5 } },
 ];
 
 type Patch = Partial<Record<"payloadKg" | "ambientC" | "acPct" | "iriOffset", number>>;
@@ -85,13 +85,18 @@ export default function ControlDock() {
         <Pills name="weather" legend="Weather" options={weather} current={current} />
         <Pills name="road" legend="Road" options={ROADS} current={current} />
       </div>
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3 border-t border-white/10 pt-3 sm:grid-cols-3 lg:grid-cols-5">
+      <details className="group border-t border-white/10 pt-3">
+        <summary className="cursor-pointer select-none text-xs text-white/55 hover:text-white focus-visible:outline-2 focus-visible:outline-[#00F0FF]">
+          Fine-tune <span className="font-mono tabular-nums text-white/40">{ambientC} °C · AC {vehicle.hasAc ? `${acPct}%` : "none"} · {payloadKg} kg · min {bufferPct}%</span>
+        </summary>
+      <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
         <Track id="ambient" label="Outside temp" value={`${ambientC} °C`} min={20} max={48} v={ambientC} onChange={(n) => set({ ambientC: n })} />
         <Track id="ac" label="AC load" value={vehicle.hasAc ? `${acPct}%` : "no AC"} min={0} max={100} step={10} v={acPct} disabled={!vehicle.hasAc} onChange={(n) => set({ acPct: n })} />
         <Track id="payload" label="Passengers + luggage" value={`${payloadKg} kg`} min={0} max={maxPayloadKg} step={5} v={payloadKg} onChange={(n) => set({ payloadKg: n })} />
         <Track id="age" label="Battery age" value={`${batteryAgeYears} yr · ${Math.round(healthPct)}%`} min={0} max={10} v={batteryAgeYears} onChange={(n) => set({ batteryAgeYears: n })} />
         <Track id="buffer" label="Min battery on arrival" value={`${bufferPct}%`} min={5} max={30} v={bufferPct} onChange={(n) => set({ bufferPct: n })} />
       </div>
+      </details>
     </div>
   );
 }
