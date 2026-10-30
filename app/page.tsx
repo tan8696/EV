@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, Gauge, PlugZap, Route, SlidersHorizontal } from "lucide-react";
 import ChargerGlobe, { reliabilityColor } from "@/components/ChargerGlobe";
+import ScrollDrive from "@/components/ScrollDrive";
 import { SpotlightCard } from "@/components/react-bits";
 import { DEPARTURE_HOUR } from "@/components/TripContext";
 import { assessCharger, CHARGERS } from "@/lib/chargerReliability";
@@ -27,46 +28,20 @@ const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visi
 
 export default function Home() {
   return (
+    <>
+    <ScrollDrive />
     <main className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-10 sm:px-6 sm:py-14">
-      <section className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
-        <div className="flex flex-col gap-5">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#00F0FF]/80">PakkaRange · EV range for Indian highways</p>
-          <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-            Will I make it?
-            <span className="block text-white/50">Your dashboard is guessing.</span>
-          </h1>
+      <section aria-labelledby="globe" className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+        <div className="flex flex-col gap-4">
+          <h2 id="globe" className="text-3xl font-semibold leading-tight text-white sm:text-4xl">
+            Every charger, scored.
+            <span className="block text-white/50">Before you need it.</span>
+          </h2>
           <p className="max-w-lg text-base text-white/60">
-            We replace the single range number with a confidence interval from physics and 500 simulated trips, and score every
-            charger on the way by how likely it is to work when you get there.
+            <span className="font-mono tabular-nums">{CHARGERS.length}</span> stations on{" "}
+            <span className="font-mono tabular-nums">{CORRIDORS.length}</span> corridors, each with a Bayesian chance of working
+            at the hour you arrive: locked gates at night, closed malls, broken guns and queues included.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/cockpit"
-              className={`inline-flex items-center gap-2 rounded-xl bg-[#00F0FF] px-5 py-2.5 text-sm font-semibold text-[#07090E] hover:bg-[#00F0FF]/85 ${focus}`}
-            >
-              Check my trip <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-            <Link
-              href="/cockpit"
-              className={`inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-2.5 text-sm text-white/80 hover:border-white/30 hover:text-white ${focus}`}
-            >
-              See the chargers
-            </Link>
-          </div>
-          <dl className="mt-2 grid max-w-md grid-cols-3 gap-3 border-t border-white/10 pt-5">
-            <div>
-              <dt className="text-[11px] text-white/40">Corridors</dt>
-              <dd className="font-mono text-xl tabular-nums text-white">{CORRIDORS.length}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] text-white/40">Chargers scored</dt>
-              <dd className="font-mono text-xl tabular-nums text-white">{CHARGERS.length}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] text-white/40">Trips per answer</dt>
-              <dd className="font-mono text-xl tabular-nums text-white">500</dd>
-            </div>
-          </dl>
         </div>
 
         <figure className="flex flex-col items-center gap-4">
@@ -115,5 +90,6 @@ export default function Home() {
         </ul>
       </section>
     </main>
+    </>
   );
 }
